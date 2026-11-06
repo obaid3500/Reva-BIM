@@ -20,6 +20,7 @@ export function LiveBox({ toScreen }: { toScreen: ToScreen }) {
   const m = live.owner ? liveMeasure(live) : null;
   if (!live.owner || !m || !live.cursor) return null;
   const at = toScreen(m.end);
+  const drawing = live.owner === 'tool' || live.owner === 'cad';
   const cell = (f: LiveField, label: string, shown: string, unit: string) => (
     <span className={`live-cell${live.focus === f ? ' on' : ''}${live[f] ? ' typed' : ''}`}>
       <span className="live-label">{label}</span>{live[f] || shown}<span className="live-unit">{unit}</span>
@@ -31,7 +32,7 @@ export function LiveBox({ toScreen }: { toScreen: ToScreen }) {
         <span className="live-cell ro"><span className="live-label">Δx</span>{formatLength(m.dx)}<span className="live-unit">{unitLabel()}</span></span>
         <span className="live-cell ro"><span className="live-label">Δy</span>{formatLength(m.dy)}<span className="live-unit">{unitLabel()}</span></span>
       </>}
-      {cell('len', 'L', formatLength(m.len), unitLabel())}
+      {cell('len', 'L', drawing ? m.len.toFixed(2) : formatLength(m.len), drawing ? 'm' : unitLabel())}
       {cell('ang', '∠', formatAngle(m.ang), '°')}
     </div>
   );
@@ -43,6 +44,7 @@ export function LiveBar({ inline }: { inline?: boolean }) {
   const here = useInterface((s) => (s.parts.prompt === 'commandLine') === !!inline);
   const m = live.owner ? liveMeasure(live) : null;
   if (!live.owner || !m || !here) return null;
+  const drawing = live.owner === 'tool' || live.owner === 'cad';
   const field = (f: LiveField, label: string, shown: string) => (
     <label className={`live-field${live.focus === f ? ' on' : ''}`}>
       <span>{label}</span>
@@ -58,7 +60,7 @@ export function LiveBar({ inline }: { inline?: boolean }) {
   );
   return (
     <div className={`live-bar${inline ? ' inline' : ''}`} role="group" aria-label="Segment">
-      {field('len', `Length${unitLabel() ? ` (${unitLabel()})` : ''}`, formatLength(m.len))}
+      {field('len', drawing ? 'Length (m)' : `Length${unitLabel() ? ` (${unitLabel()})` : ''}`, drawing ? m.len.toFixed(2) : formatLength(m.len))}
       {field('ang', 'Angle (°)', formatAngle(m.ang))}
       <span className="live-ro"><span>Δx</span>{formatLength(m.dx)}</span>
       <span className="live-ro"><span>Δy</span>{formatLength(m.dy)}</span>
