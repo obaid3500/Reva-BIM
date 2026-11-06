@@ -20,6 +20,7 @@ import type { FaceHit, Vec2 } from '../platform/module';
 import { findTool } from '../platform/modules';
 import { useGripEditor } from './GripLayer';
 import { LiveBar, LiveBox } from './LiveBox';
+import { TemporaryDimensionOverlay } from './TemporaryDimensionOverlay';
 import { liveBegin, liveCursor, liveEnd, livePoint, useLive } from './liveInput';
 import { preciseDrawingPoint, formatDrawingMetres, type LengthHold } from './drawingPrecision';
 import { markSelected, pickAt, regionIds } from './planPick';
@@ -679,6 +680,8 @@ export function PlanView() {
         ))}
         {pts.map((p, i) => { const s = toScreen(p); return <circle key={i} cx={s.x} cy={s.y} r={3} className="plan-vertex" />; })}
         {editor.render}
+        <TemporaryDimensionOverlay selected={selected} items={items} nodes={nodes} toScreen={toScreen}
+          viewId={planViewOf} disabled={!!tool?.gesture || !!cadStep || !!editor.dragging} />
         {preview}
         {marker && hover && !hover.mode && (hover.kind === 'point' && !hover.guides.length
           ? <rect x={marker.x - 5} y={marker.y - 5} width={10} height={10} className="plan-snap point" />
