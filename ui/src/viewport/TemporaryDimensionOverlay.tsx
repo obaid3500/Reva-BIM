@@ -26,6 +26,16 @@ export function TemporaryDimensionOverlay({ selected, items, nodes, toScreen, vi
   const busy = useRef(new Set<string>());
   useEffect(() => { setEditing(null); setPinned([]); busy.current.clear(); }, [id, viewId]);
   const key = (d: FaceDimension) => [viewId, d.selected, d.reference, d.side].join(':');
+  const isPermanent = (d: FaceDimension) => [...nodes.values()].some((node) => {
+    if (node.props.predefinedType !== 'DIMENSION' || node.props.viewId !== viewId) return false;
+    const refs = node.props.refs;
+    const pts = node.props.pts;
+    if (!Array.isArray(refs) || !Array.isArray(pts) || refs.length !== 2 || pts.length !== 2) return false;
+    const ids = refs.map((ref) => ref && typeof ref === 'object' && !Array.isArray(ref) ? ref.element : null);
+    if (!ids.includes(d.selected) || !ids.includes(d.reference)) return false;
+    return pts.some((point) => Array.isArray(point) && point.length >= 2 &&
+      Math.hypot(Number(point[0]) - d.a.x, Number(point[1]) - d.a.y) < 0.03);
+  });
   const commit = async (d: FaceDimension) => {
     const target = parseLength(value, 'm');
     setEditing(null);
@@ -38,7 +48,7 @@ export function TemporaryDimensionOverlay({ selected, items, nodes, toScreen, vi
   const pin = async (d: FaceDimension) => {
     if (!viewId) return;
     const k = key(d);
-    if (busy.current.has(k) || pinned.includes(k)) return;
+    if (busy.current.has(k) || pinned.includes(k) || isPermanent(d)) return;
     busy.current.add(k);
     try {
       const mid = { x: (d.a.x + d.b.x) / 2, y: (d.a.y + d.b.y) / 2 };
@@ -51,7 +61,7 @@ export function TemporaryDimensionOverlay({ selected, items, nodes, toScreen, vi
   return <g className="temporary-dimensions" aria-label="Temporary dimensions">
     {candidates.map((d) => {
       const k = key(d);
-      if (pinned.includes(k)) return null;
+      if (pinned.includes(k) || isPermanent(d)) return null;
       const a = toScreen(d.a), b = toScreen(d.b);
       const x = (a.x + b.x) / 2, y = (a.y + b.y) / 2;
       const editingThis = editing === k;
@@ -61,7 +71,7 @@ export function TemporaryDimensionOverlay({ selected, items, nodes, toScreen, vi
         <foreignObject x={x - 70} y={y - 21} width={140} height={62} style={{ overflow: 'visible' }}
           onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}>
-          <div xmlns="http://www.w3.org/1999/xhtml" style={{ display: 'flex', alignItems: 'center', flexDirection: 'column', gap: 2 }}>
+          <div style={{ display: 'flex', alignItems: 'center', flexDirection: 'column', gap: 2 }}>
             {editingThis
               ? <input autoFocus type="text" inputMode="decimal" value={value}
                   onChange={(e) => setValue(e.target.value)}
