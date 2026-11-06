@@ -21,6 +21,7 @@ import { findTool } from '../platform/modules';
 import { useGripEditor } from './GripLayer';
 import { LiveBar, LiveBox } from './LiveBox';
 import { liveBegin, liveCursor, liveEnd, livePoint, useLive } from './liveInput';
+import { preciseDrawingPoint, formatDrawingMetres, type LengthHold } from './drawingPrecision';
 import { markSelected, pickAt, regionIds } from './planPick';
 import { dragTo, regionTestOf, SelectRegion, useLassoKey, type SelectDrag } from './selectDrag';
 import { pickable, useScope } from '../platform/scope';
@@ -231,14 +232,22 @@ export function PlanView() {
   /** The selection dragged by its body (its trace shows over the plan). */
   const dragTrace = useTrace((s) => s.trace?.owner === 'drag');
 
+  const lengthHold = useRef<LengthHold | null>(null);
   const snapAt = useCallback((clientX: number, clientY: number, from?: Vec2): Aimed => {
     const rect = svgRef.current!.getBoundingClientRect();
     const raw = toWorld(clientX - rect.left, clientY - rect.top);
-    const a = aim(raw, from ?? null, { grid: view.scale > 30 ? 0.05 : 0.5, orthoHeld: ortho });
+    let a = aim(raw, from ?? null, { grid: view.scale > 30 ? 0.05 : 0.5, orthoHeld: ortho });
+    const drawingSegment = !!from && (!!tool?.gesture || useCad.getState().step?.want === 'point');
+    // Exact object snaps and guide intersections always win over length steps.
+    if (drawingSegment && from && !a.mode && (!a.guides.length || a.lock === 'ortho' || a.lock === 'polar')) {
+      const measured = preciseDrawingPoint(from, a.point, view.scale, lengthHold.current);
+      lengthHold.current = measured.hold;
+      a = { ...a, point: measured.point };
+    } else lengthHold.current = null;
     useCad.setState({ cursor: a.point });
     liveCursor(a.point);
     return a;
-  }, [toWorld, view.scale, aim, ortho]);
+  }, [toWorld, view.scale, aim, ortho, tool]);
 
   /** A tool's own rule for its next point (a pipe's material), over the snap. */
   const constrained = (a: Aimed): Aimed => {
@@ -536,7 +545,7 @@ export function PlanView() {
       return (
         <g className="plan-preview">
           <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
-          <text x={(a.x + b.x) / 2 + 8} y={(a.y + b.y) / 2 - 8}>{lengthText(Math.hypot(cur.x - pts[0].x, cur.y - pts[0].y))}</text>
+          <text x={(a.x + b.x) / 2 + 8} y={(a.y + b.y) / 2 - 8}>{formatDrawingMetres(Math.hypot(cur.x - pts[0].x, cur.y - pts[0].y))}</text>
         </g>
       );
     }
@@ -568,7 +577,7 @@ export function PlanView() {
       return (
         <g className="plan-preview">
           <rect x={Math.min(a.x, b.x)} y={Math.min(a.y, b.y)} width={Math.abs(b.x - a.x)} height={Math.abs(b.y - a.y)} />
-          <text x={Math.max(a.x, b.x) + 8} y={Math.min(a.y, b.y) - 6}>{formatLength(Math.abs(cur.x - pts[0].x))} × {lengthText(Math.abs(cur.y - pts[0].y))}</text>
+          <text x={Math.max(a.x, b.x) + 8} y={Math.min(a.y, b.y) - 6}>{formatDrawingMetres(Math.abs(cur.x - pts[0].x))} × {formatDrawingMetres(Math.abs(cur.y - pts[0].y))}</text>
         </g>
       );
     }
