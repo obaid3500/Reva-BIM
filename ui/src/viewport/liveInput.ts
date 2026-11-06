@@ -68,7 +68,8 @@ export function livePoint(s: Pick<LiveState, 'base' | 'cursor' | 'len' | 'ang'> 
   if (!s.base) return null;
   const c = s.cursor ?? { x: s.base.x + 1, y: s.base.y };
   const dx = c.x - s.base.x, dy = c.y - s.base.y;
-  const typedLen = parseLength(s.len), typedAng = parseAngle(s.ang);
+  const drawingOwner = 'owner' in s && (s.owner === 'tool' || s.owner === 'cad');
+  const typedLen = parseLength(s.len, drawingOwner ? 'm' : undefined), typedAng = parseAngle(s.ang);
   const len = typedLen ?? Math.hypot(dx, dy);
   const ang = typedAng != null ? (typedAng * Math.PI) / 180 : Math.atan2(dy, dx);
   if (typedLen == null && typedAng == null) return c;
@@ -95,7 +96,7 @@ export function liveCommit(): boolean {
   const p = livePoint(s);
   if (!p) return false;
   const commit = s.commit;
-  const typed = parseLength(s.len) ?? undefined;
+  const typed = parseLength(s.len, s.owner === 'tool' || s.owner === 'cad' ? 'm' : undefined) ?? undefined;
   useLive.setState({ len: '', ang: '' });
   commit(p, typed);
   return true;
