@@ -239,7 +239,7 @@ export function PlanView() {
     let a = aim(raw, from ?? null, { grid: view.scale > 30 ? 0.05 : 0.5, orthoHeld: ortho });
     const drawingSegment = !!from && (!!tool?.gesture || useCad.getState().step?.want === 'point');
     // Exact object snaps and guide intersections always win over length steps.
-    if (drawingSegment && from && !a.mode && (!a.guides.length || a.lock === 'ortho' || a.lock === 'polar')) {
+    if (drawingSegment && from && !a.mode && !a.guides.length) {
       const measured = preciseDrawingPoint(from, a.point, view.scale, lengthHold.current);
       lengthHold.current = measured.hold;
       a = { ...a, point: measured.point };
@@ -254,7 +254,11 @@ export function PlanView() {
     const g = tool?.gesture;
     if ((g?.kind !== 'polyline' && g?.kind !== 'threePoints') || !g.constrain || pts.length === 0) return a;
     const p = g.constrain(pts, a.point);
-    return p.x === a.point.x && p.y === a.point.y ? a : { ...a, point: p, kind: 'free', guides: [], lock: undefined };
+    if (p.x !== a.point.x || p.y !== a.point.y) {
+      liveCursor(p); // The readout must reflect the geometry the tool will commit.
+      return { ...a, point: p, kind: 'free', guides: [], lock: undefined };
+    }
+    return a;
   };
 
   /** The element a pick-then-point gesture took with its first click. */
